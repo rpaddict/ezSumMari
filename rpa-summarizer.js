@@ -43,9 +43,7 @@
     customParams: '',
     includeLorebook: false,
     prevMessages: 0,
-    minLength: 100,
     hideFabButton: false,
-    manualOffset: 0,
     systemPrompts: [{ enabled: true, text: DEFAULT_SYSTEM_PROMPT }]
   };
 
@@ -148,9 +146,7 @@
       State.customParams = stored.customParams ?? '';
       State.includeLorebook = stored.includeLorebook ?? false;
       State.prevMessages = stored.prevMessages ?? 0;
-      State.minLength = stored.minLength ?? 100;
       State.hideFabButton = stored.hideFabButton ?? false;
-      State.manualOffset = stored.manualOffset ?? 0;
       State.savedAt = stored.savedAt || 0;
       if (stored.systemPrompts && Array.isArray(stored.systemPrompts)) {
         State.systemPrompts = stored.systemPrompts;
@@ -171,8 +167,8 @@
         cacheEnabled: State.cacheEnabled, jsonMode: State.jsonMode, logprobs: State.logprobs,
         topLogprobs: State.topLogprobs, stopSequences: State.stopSequences, userId: State.userId,
         seed: State.seed, customParams: State.customParams,
-        includeLorebook: State.includeLorebook, prevMessages: State.prevMessages, minLength: State.minLength,
-        hideFabButton: State.hideFabButton, manualOffset: State.manualOffset,
+        includeLorebook: State.includeLorebook, prevMessages: State.prevMessages,
+        hideFabButton: State.hideFabButton,
         systemPrompts: State.systemPrompts,
         savedAt: State.savedAt
       });
@@ -191,8 +187,8 @@
       cacheEnabled: State.cacheEnabled, jsonMode: State.jsonMode, logprobs: State.logprobs,
       topLogprobs: State.topLogprobs, stopSequences: State.stopSequences, userId: State.userId,
       seed: State.seed, customParams: State.customParams,
-      includeLorebook: State.includeLorebook, prevMessages: State.prevMessages, minLength: State.minLength,
-      hideFabButton: State.hideFabButton, manualOffset: State.manualOffset,
+      includeLorebook: State.includeLorebook, prevMessages: State.prevMessages,
+      hideFabButton: State.hideFabButton,
       systemPrompts: cloneDeep(State.systemPrompts)
     };
   }
@@ -216,8 +212,8 @@
       cacheEnabled: p.cacheEnabled ?? false, jsonMode: p.jsonMode ?? false, logprobs: p.logprobs ?? false,
       topLogprobs: p.topLogprobs ?? '', stopSequences: p.stopSequences ?? '', userId: p.userId ?? '',
       seed: p.seed ?? '', customParams: p.customParams ?? '',
-      includeLorebook: p.includeLorebook ?? false, prevMessages: p.prevMessages ?? 0, minLength: p.minLength ?? 100,
-      hideFabButton: p.hideFabButton ?? false, manualOffset: p.manualOffset ?? 0,
+      includeLorebook: p.includeLorebook ?? false, prevMessages: p.prevMessages ?? 0,
+      hideFabButton: p.hideFabButton ?? false,
       systemPrompts: p.systemPrompts ? cloneDeep(p.systemPrompts) : [{ enabled: true, text: DEFAULT_SYSTEM_PROMPT }]
     });
     await saveSettings();
@@ -380,7 +376,7 @@
     if (type !== 'model') return content;
     if (!State.enabled) return content;
     if (!State.apiUrl || !State.apiKey || !State.model) return content;
-    if (!content || content.length < State.minLength) return content;
+    if (!content) return content;
     if (content.indexOf('*-*-') !== -1 && content.indexOf('-*-*') !== -1) return content;
     if (content.indexOf('<!-- summary:') !== -1) return content;
 
@@ -423,15 +419,10 @@
       var chat = await risuai.getChatFromIndex(charIndex, chatIndex);
       if (!chat?.message || chat.message.length === 0) return;
 
-      var offset = State.manualOffset || 0;
-      var found = 0;
       var targetIdx = -1;
       for (var i = chat.message.length - 1; i >= 0; i--) {
         var role = chat.message[i].role;
-        if (role === 'assistant' || role === 'char') {
-          if (found === offset) { targetIdx = i; break; }
-          found++;
-        }
+        if (role === 'assistant' || role === 'char') { targetIdx = i; break; }
       }
       if (targetIdx < 0) return;
 
@@ -439,8 +430,6 @@
       var original = extractOriginal(msg.data);
       var textToSummarize = original || stripMarkers(msg.data);
       if (!textToSummarize) return;
-
-      if (textToSummarize.length < State.minLength) return;
 
       console.log('[RPA Summarizer] FAB: re-summarizing message ' + (targetIdx + 1) + ' (' + textToSummarize.length + ' chars)');
       var summary = await summarize(textToSummarize);
@@ -533,8 +522,8 @@
         .rs-input { width: 100%; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: #f6f8fa; color: #24292e; font-family: inherit; }
         .rs-select { width: 100%; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: #f6f8fa; color: #24292e; font-family: inherit; }
         .rs-textarea { width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 12px; font-family: "SF Mono", Monaco, Consolas, monospace; line-height: 1.5; background: #f6f8fa; color: #24292e; resize: vertical; }
-        .rs-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-        .rs-checkbox input { width: 18px; height: 18px; accent-color: #7c3aed; }
+        .rs-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .rs-checkbox input { width: 16px; height: 16px; accent-color: #7c3aed; }
         .rs-checkbox-large { font-size: 15px; font-weight: 700; gap: 10px; }
         .rs-checkbox-large input { width: 20px; height: 20px; accent-color: #7c3aed; }
         .rs-checkbox-sm { font-size: 12px !important; }
@@ -594,11 +583,31 @@
         .rs-update-banner .rs-update-close { margin-left: auto; cursor: pointer; padding: 2px 6px; opacity: 0.6; }
         .rs-update-banner .rs-update-close:hover { opacity: 1; }
         .dark .rs-update-banner { background: #422006; border-color: #d97706; color: #fde68a; }
+
+        .rs-help-btn { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; margin-left: 8px; flex-shrink: 0; }
+        .rs-help-btn:hover { background: rgba(255,255,255,0.35); }
+        .rs-help-modal-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 20; align-items: center; justify-content: center; }
+        .rs-help-modal-overlay.active { display: flex; }
+        .rs-help-modal { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 520px; max-height: 75vh; display: flex; flex-direction: column; overflow: hidden; }
+        .rs-help-modal-header { padding: 14px 18px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .rs-help-modal-header span { font-size: 14px; font-weight: 700; }
+        .rs-help-modal-body { flex: 1; overflow-y: auto; padding: 18px; font-size: 13px; line-height: 1.7; color: #24292e; }
+        .rs-help-modal-body h3 { font-size: 15px; margin: 14px 0 6px; color: #7c3aed; }
+        .rs-help-modal-body h3:first-child { margin-top: 0; }
+        .rs-help-modal-body p { margin: 0 0 8px; }
+        .rs-help-modal-body ul { margin: 4px 0 10px; padding-left: 20px; }
+        .rs-help-modal-body li { margin-bottom: 4px; }
+        .dark .rs-help-modal { background: #2d3243; }
+        .dark .rs-help-modal-body { color: #e1e4e8; }
+        .dark .rs-help-modal-body h3 { color: #a78bfa; }
       </style>
 
       <div class="rs-container ${themeClass}">
         <div class="rs-header">
-          <div class="rs-header-title">RPA Summarizer v${escapeHtml(APP_VERSION)}</div>
+          <div style="display: flex; align-items: center;">
+            <div class="rs-header-title">RPA Summarizer v${escapeHtml(APP_VERSION)}</div>
+            <button class="rs-help-btn" id="rs-help-btn">?</button>
+          </div>
           <div class="rs-close" id="rs-close">X 닫기</div>
         </div>
 
@@ -630,7 +639,7 @@
               </div>
             </div>
             <div style="margin-top: 8px;">
-              <button class="rs-btn" id="rs-import-proofreader">Proofreader 프리셋 가져오기</button>
+              <button class="rs-btn" id="rs-import-proofreader">Proofreader API 설정 가져오기</button>
             </div>
             <div class="rs-hint">드롭다운에서 프리셋을 선택하여 바로 적용할 수 있습니다.</div>
           </div>
@@ -706,27 +715,6 @@
             <div class="rs-hint">OpenRouter 제공자 라우팅 설정 등을 직접 입력할 수 있습니다.</div>
           </div>
 
-          <!-- Summarization-specific settings -->
-          <div class="rs-section">
-            <div class="rs-label">요약 동작 설정</div>
-            <div class="rs-grid-2" style="margin-bottom: 12px;">
-              <div>
-                <div class="rs-label">최소 메시지 길이 (글자 수)</div>
-                <input type="number" id="rs-min-len" class="rs-input" value="${State.minLength}" min="0" max="5000" step="10">
-              </div>
-              <div>
-                <div class="rs-label">이전 대화 맥락 포함 수</div>
-                <input type="number" id="rs-prev-msgs" class="rs-input" value="${State.prevMessages}" min="0" max="20" step="1">
-                <div class="rs-hint">0 = 현재 메시지만 요약</div>
-              </div>
-            </div>
-            <label class="rs-checkbox" style="margin-bottom: 6px;">
-              <input type="checkbox" id="rs-include-lorebook" ${State.includeLorebook ? 'checked' : ''}>
-              <span>세계관 (Lorebook) 활성화 항목 포함</span>
-            </label>
-            <div class="rs-hint" style="padding-left: 26px;">캐릭터/채널의 세계관 설정을 요약 모델로 전송합니다.</div>
-          </div>
-
           <!-- FAB Settings -->
           <div class="rs-section">
             <div class="rs-label">빠른 재요약 플로팅 버튼 (FAB)</div>
@@ -735,11 +723,21 @@
               <span>플로팅 버튼 숨기기</span>
             </label>
             <div class="rs-hint" style="padding-left: 26px;">설정 적용을 위해 RisuAI를 다시 시작해 주세요.</div>
-            <div style="margin-top: 10px;">
-              <div class="rs-label">메시지 오프셋 (0 = 가장 최근 메시지, 1 = 이전 메시지 등)</div>
-              <input type="number" id="rs-manual-offset" class="rs-input" value="${State.manualOffset ?? 0}" min="0" max="20" step="1" style="width: 140px;">
-              <div class="rs-hint">플로팅 버튼 클릭 시 몇 번째 이전 AI 메시지를 다시 요약할지 지정합니다.</div>
+          </div>
+
+          <!-- Summarization-specific settings -->
+          <div class="rs-section">
+            <div class="rs-label">요약 동작 설정</div>
+            <div style="margin-bottom: 12px;">
+              <div class="rs-label">컨텍스트에 포함할 이전 메시지 개수</div>
+              <input type="number" id="rs-prev-msgs" class="rs-input" value="${State.prevMessages}" min="0" max="20" step="1" style="width: 140px;">
+              <div class="rs-hint">0 = 현재 메시지만 요약</div>
             </div>
+            <label class="rs-checkbox" style="margin-bottom: 6px;">
+              <input type="checkbox" id="rs-include-lorebook" ${State.includeLorebook ? 'checked' : ''}>
+              <span>세계관 (Lorebook) 활성화 항목 포함</span>
+            </label>
+            <div class="rs-hint" style="padding-left: 26px;">캐릭터/채널의 세계관 설정을 요약 모델로 전송합니다.</div>
           </div>
 
           <!-- System Prompts -->
@@ -755,11 +753,58 @@
             <div class="rs-hint">시스템 프롬프트는 요약 모델의 역할을 정의합니다. 활성화된 프롬프트들이 순서대로 전송됩니다.</div>
           </div>
 
+          <!-- Help Modal -->
+          <div class="rs-help-modal-overlay" id="rs-help-modal-overlay">
+            <div class="rs-help-modal">
+              <div class="rs-help-modal-header">
+                <span>RPA Summarizer 도움말</span>
+                <button class="rs-close" id="rs-help-modal-close">X</button>
+              </div>
+              <div class="rs-help-modal-body">
+                <h3>RPA Summarizer란?</h3>
+                <p>RPA Summarizer는 AI의 답변을 <strong>보조 요약 모델</strong>로 자동 요약하여 컨텍스트 토큰을 절약하는 플러그인입니다. 메인 대화 모델과 별개의 저렴한 모델(예: gpt-4o-mini)로 요약을 처리하므로 비용 부담이 적습니다.</p>
+
+                <h3>동작 방식</h3>
+                <ul>
+                  <li>AI 답변이 완료되면 요약 모델이 해당 답변을 1~3문장으로 요약합니다.</li>
+                  <li>원본 메시지는 <code>*-*- ... -*-*</code> 마커로 감싸지고, 요약문이 HTML 주석으로 추가됩니다.</li>
+                  <li>다음 메시지 전송 시 마커로 감싼 원본은 자동으로 제거되고 요약문만 남게 됩니다.</li>
+                  <li>이렇게 하면 과거 대화의 전체 내용 대신 간결한 요약만 컨텍스트에 포함되어 토큰을 절약합니다.</li>
+                </ul>
+
+                <h3>사용 방법</h3>
+                <ol>
+                  <li><strong>API 설정</strong>: 요약에 사용할 모델의 API 주소와 키를 입력합니다.</li>
+                  <li><strong>자동 요약 활성화</strong>: 상단의 체크박스를 켜면 AI 답변마다 자동 요약이 시작됩니다.</li>
+                  <li><strong>모델 선택</strong>: 요약에 적합한 모델을 선택합니다. 저렴하고 빠른 모델을 권장합니다.</li>
+                  <li><strong>시스템 프롬프트</strong>: 요약 스타일(길이, 언어, 형식 등)을 프롬프트로 세밀하게 지정할 수 있습니다.</li>
+                </ol>
+
+                <h3>프리셋</h3>
+                <ul>
+                  <li>여러 API 설정 조합을 <strong>프리셋</strong>으로 저장하고 드롭다운에서 빠르게 전환할 수 있습니다.</li>
+                  <li><strong>Proofreader API 설정 가져오기</strong> 버튼으로 Proofreader 플러그인의 API 설정을 가져올 수 있습니다.</li>
+                </ul>
+
+                <h3>빠른 재요약 버튼 (FAB)</h3>
+                <p>채팅 화면 우측 하단의 플로팅 버튼을 누르면 가장 최근 AI 메시지를 수동으로 다시 요약할 수 있습니다. 이전에 요약되지 않은 메시지도 처리할 수 있습니다.</p>
+
+                <h3>팁</h3>
+                <ul>
+                  <li>요약 모델은 <strong>gpt-4o-mini</strong> 같은 저렴한 모델로도 충분합니다.</li>
+                  <li>세계관(Lorebook) 포함을 켜면 등장인물이나 설정을 반영한 더 정확한 요약을 얻을 수 있습니다.</li>
+                  <li>이전 메시지 개수를 1 이상으로 설정하면 직전 대화 맥락을 포함해 요약 품질을 높일 수 있습니다.</li>
+                  <li>시스템 프롬프트를 여러 개 등록하면 순서대로 요약 모델에 전달됩니다.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <!-- Import Modal -->
           <div class="rs-modal-overlay" id="rs-import-modal">
             <div class="rs-modal">
               <div class="rs-modal-header">
-                <span>Proofreader 프리셋 가져오기</span>
+                <span>Proofreader API 설정 가져오기</span>
                 <button class="rs-close" id="rs-modal-close">X</button>
               </div>
               <div class="rs-modal-body" id="rs-modal-body">
@@ -791,6 +836,19 @@
     document.body.addEventListener('click', function(e) {
       if (e.target === document.body) {
         risuai.hideContainer();
+      }
+    });
+
+    // Help modal
+    document.getElementById('rs-help-btn')?.addEventListener('click', function() {
+      document.getElementById('rs-help-modal-overlay').classList.add('active');
+    });
+    document.getElementById('rs-help-modal-close')?.addEventListener('click', function() {
+      document.getElementById('rs-help-modal-overlay').classList.remove('active');
+    });
+    document.getElementById('rs-help-modal-overlay')?.addEventListener('click', function(e) {
+      if (e.target === e.currentTarget) {
+        e.currentTarget.classList.remove('active');
       }
     });
 
@@ -867,8 +925,8 @@
           topLogprobs: p.topLogprobs ?? '', stopSequences: p.stopSequences ?? '', userId: p.userId ?? '',
           seed: p.seed ?? '', customParams: p.customParams ?? '',
           includeLorebook: p.includeLorebook ?? false,
-          prevMessages: State.prevMessages, minLength: State.minLength,
-          hideFabButton: false, manualOffset: 0,
+          prevMessages: State.prevMessages,
+          hideFabButton: false,
           systemPrompts: cloneDeep(State.systemPrompts)
         };
         imported++;
@@ -952,7 +1010,7 @@
       ['rs-thinking-budget', 'thinkingBudget', 'trim'], ['rs-seed', 'seed', 'trim'],
       ['rs-top-logprobs', 'topLogprobs', 'trim'], ['rs-stop', 'stopSequences', 'trim'], ['rs-user-id', 'userId', 'trim'],
       ['rs-custom-params', 'customParams', 'trim'],
-      ['rs-min-len', 'minLength', 'int'], ['rs-prev-msgs', 'prevMessages', 'int']
+      ['rs-prev-msgs', 'prevMessages', 'int']
     ];
     fields.forEach(function(item) {
       var id = item[0], key = item[1], type = item[2];
@@ -974,16 +1032,6 @@
     document.getElementById('rs-logprobs')?.addEventListener('change', async function(e) { State.logprobs = e.target.checked; await saveSettings(); });
     document.getElementById('rs-include-lorebook')?.addEventListener('change', async function(e) { State.includeLorebook = e.target.checked; await saveSettings(); });
     document.getElementById('rs-hide-fab')?.addEventListener('change', async function(e) { State.hideFabButton = e.target.checked; await saveSettings(); });
-    var offsetTimer = null;
-    document.getElementById('rs-manual-offset')?.addEventListener('input', function(e) {
-      if (offsetTimer) clearTimeout(offsetTimer);
-      var el = e.target;
-      offsetTimer = setTimeout(async function() {
-        var newVal = Math.max(0, parseInt(el.value) || 0);
-        State.manualOffset = newVal;
-        await saveSettings();
-      }, 300);
-    });
 
     // System prompt controls
     document.getElementById('rs-prompt-add')?.addEventListener('click', async function() {
