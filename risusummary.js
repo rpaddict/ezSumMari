@@ -497,6 +497,9 @@
   }
 
   async function openSettings() {
+    try {
+      await risuai.requestPluginPermission('db');
+    } catch (e) {}
     await risuai.showContainer('fullscreen');
     await renderSettingsUI();
   }
