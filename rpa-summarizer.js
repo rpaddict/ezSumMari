@@ -17,7 +17,7 @@
     </svg>
   `;
 
-  const MARKER_REGEX = /<rpa-orig>[\s\S]*?<\/rpa-orig>/g;
+  const MARKER_REGEX = /<div class="rpa-orig">[\s\S]*?<\/div>/g;
 
   const DEFAULT_SYSTEM_PROMPT = 'You are a precise text summarizer. Summarize the given text in 1-3 concise sentences, in the same language as the original. Focus on key events, actions, decisions, and important dialogue. Do not add commentary, explanations, or meta-remarks. Output only the summary.';
 
@@ -365,21 +365,19 @@
     if (!State.enabled) return content;
     if (!State.apiUrl || !State.apiKey || !State.model) return content;
     if (!content || content.length < State.minLength) return content;
-    if (content.indexOf('<rpa-orig>') !== -1 && content.indexOf('</rpa-orig>') !== -1) return content;
+    if (content.indexOf('class="rpa-orig"') !== -1) return content;
     if (content.indexOf('<!-- summary:') !== -1) return content;
 
     try {
       var summary = await summarize(content);
       if (!summary) return content;
       console.log('[RPA Summarizer] Summarized ' + content.length + ' -> ' + summary.length + ' chars');
-      return '<rpa-orig>\n' + content + '\n</rpa-orig>\n<!-- summary: ' + escapeComment(summary) + ' -->';
+      return '<div class="rpa-orig">\n' + content + '\n</div>\n<!-- summary: ' + escapeComment(summary) + ' -->';
     } catch (e) {
       console.error('[RPA Summarizer] Summarization failed:', e);
       return content;
     }
   }
-
-  // ───── beforeRequest: strip marker-wrapped content ─────
 
   async function beforeRequestHandler(messages, type) {
     if (!State.enabled) return messages;
@@ -387,13 +385,30 @@
     var cleanMessages = [];
     for (var i = 0; i < messages.length; i++) {
       var msg = messages[i];
-      if (typeof msg.content === 'string' && msg.content.indexOf('<rpa-orig>') !== -1) {
-        cleanMessages.push(Object.assign({}, msg, {
-          content: msg.content.replace(MARKER_REGEX, '')
-        }));
-      } else {
-        cleanMessages.push(msg);
+      if (typeof msg.content === 'string') {
+        var hasNewMarker = msg.content.indexOf('class="rpa-orig"') !== -1;
+        var hasOldMarker = msg.content.indexOf('*-*-') !== -1;
+
+        if (hasNewMarker || hasOldMarker) {
+          var cleanContent = msg.content;
+          if (hasNewMarker) cleanContent = cleanContent.replace(MARKER_REGEX, '');
+          if (hasOldMarker) cleanContent = cleanContent.replace(OLD_MARKER_REGEX, '');
+
+          console.log('[RPA Summarizer] [디버그] 원본 메시지 감지 및 필터링 완료:', {
+            index: i,
+            markerType: hasNewMarker && hasOldMarker ? 'Both' : (hasNewMarker ? 'New (<div class="rpa-orig">)' : 'Old (*-*-)'),
+            originalLength: msg.content.length,
+            filteredLength: cleanContent.length,
+            filteredPreview: cleanContent.substring(0, 150) + '...'
+          });
+
+          cleanMessages.push(Object.assign({}, msg, {
+            content: cleanContent
+          }));
+          continue;
+        }
       }
+      cleanMessages.push(msg);
     }
     return cleanMessages;
   }
@@ -402,13 +417,14 @@
 
   function stripMarkers(content) {
     var text = content || '';
-    text = text.replace(/<rpa-orig>[\s\S]*?<\/rpa-orig>/g, '');
+    text = text.replace(/<div class="rpa-orig">[\s\S]*?<\/div>/g, '');
+    text = text.replace(OLD_MARKER_REGEX, '');
     text = text.replace(/<!-- summary:[\s\S]*?-->/g, '');
     return text.trim();
   }
 
   function extractOriginal(content) {
-    var m = (content || '').match(/<rpa-orig>\n?([\s\S]*?)<\/rpa-orig>/);
+    var m = (content || '').match(/<div class="rpa-orig">\n?([\s\S]*?)<\/div>/);
     return m ? m[1].trim() : null;
   }
 
@@ -436,7 +452,7 @@
       var summary = await summarize(textToSummarize);
       if (!summary) return;
 
-      chat.message[targetIdx].data = '<rpa-orig>\n' + textToSummarize + '\n</rpa-orig>\n<!-- summary: ' + escapeComment(summary) + ' -->';
+      chat.message[targetIdx].data = '<div class="rpa-orig">\n' + textToSummarize + '\n</div>\n<!-- summary: ' + escapeComment(summary) + ' -->';
       await risuai.setChatToIndex(charIndex, chatIndex, chat);
       console.log('[RPA Summarizer] FAB: re-summarized (' + summary.length + ' chars)');
     } catch (e) {
@@ -1392,7 +1408,7 @@
       if (rootDoc && !rootDoc.getElementById('rpa-summarizer-global-style')) {
         var style = rootDoc.createElement('style');
         style.id = 'rpa-summarizer-global-style';
-        style.textContent = 'rpa-orig { display: contents; }';
+        style.textContent = '.rpa-orig { display: contents; }';
         rootDoc.head.appendChild(style);
       }
     } catch (e) {
