@@ -1,12 +1,12 @@
 //@name rpa-summarizer
 //@display-name RPA Summarizer
 //@api 3.0
-//@version 1.2.5
+//@version 1.2.3
 //@update-url https://raw.githubusercontent.com/rpaddict/rpa-summarizer/main/rpa-summarizer.js
 //@description Auto-summarize AI responses using a secondary model to save context tokens. Full preset system, advanced API parameters, customizable prompts, lorebook & previous message context.
 
 (async () => {
-  const APP_VERSION = '1.2.5';
+  const APP_VERSION = '1.2.3';
   const STORAGE_KEY = 'rpa-summarizer:settings';
   const PRESETS_KEY = 'rpa-summarizer:presets';
   const UPDATE_URL = 'https://raw.githubusercontent.com/rpaddict/rpa-summarizer/main/rpa-summarizer.js';
@@ -521,7 +521,7 @@
       <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Malgun Gothic", sans-serif; background: rgba(0,0,0,0.4); color: #24292e; font-size: 14px; line-height: 1.5; height: 100vh; display: flex; justify-content: flex-end; overflow: hidden; }
-        .rs-container { max-width: 420px; width: 100%; height: 100vh; background: #fff; border: none; border-left: 1px solid #d0d7de; border-radius: 0; box-shadow: -4px 0 12px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; max-height: 100vh; }
+        .rs-container { max-width: 756px; width: 100%; height: 100vh; background: #fff; border: none; border-left: 1px solid #d0d7de; border-radius: 0; box-shadow: -4px 0 12px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; max-height: 100vh; }
         .rs-header { background: linear-gradient(135deg, #8b5cf6, #7c3aed); padding: 16px 20px; color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
         .rs-header-title { font-size: 18px; font-weight: 700; }
         .rs-close { cursor: pointer; padding: 4px 10px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 12px; }
