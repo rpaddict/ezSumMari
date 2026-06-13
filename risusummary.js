@@ -1042,7 +1042,7 @@
     if (!UPDATE_URL) return;
     try {
       var lastCheck = await risuai.pluginStorage.getItem('risusummary:lastUpdateCheck');
-      if (lastCheck) {
+      if (lastCheck && APP_VERSION !== '1.2.0' && APP_VERSION !== '1.2.2') {
         var elapsed = Date.now() - parseInt(lastCheck, 10);
         if (elapsed < updateCheckCooldown) return;
       }
