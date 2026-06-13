@@ -1,12 +1,12 @@
 //@name rpa-summarizer
 //@display-name RPA Summarizer
 //@api 3.0
-//@version 1.2.4
+//@version 1.2.5
 //@update-url https://raw.githubusercontent.com/rpaddict/rpa-summarizer/main/rpa-summarizer.js
 //@description Auto-summarize AI responses using a secondary model to save context tokens. Full preset system, advanced API parameters, customizable prompts, lorebook & previous message context.
 
 (async () => {
-  const APP_VERSION = '1.2.4';
+  const APP_VERSION = '1.2.5';
   const STORAGE_KEY = 'rpa-summarizer:settings';
   const PRESETS_KEY = 'rpa-summarizer:presets';
   const UPDATE_URL = 'https://raw.githubusercontent.com/rpaddict/rpa-summarizer/main/rpa-summarizer.js';
@@ -80,18 +80,6 @@
       if (na > nb) return 1;
     }
     return 0;
-  }
-
-  function stripMarkers(content) {
-    var text = content || '';
-    text = text.replace(/\*-\*-\n?[\s\S]*?-\*-\*\n?/g, '');
-    text = text.replace(/<!-- summary:[\s\S]*?-->/g, '');
-    return text.trim();
-  }
-
-  function extractOriginal(content) {
-    var m = (content || '').match(/\*-\*-\n?([\s\S]*?)-\*-\*/);
-    return m ? m[1].trim() : null;
   }
 
   function parseCustomParams() {
@@ -391,25 +379,6 @@
     }
   }
 
-  // ───── beforeRequest: strip marker-wrapped content ─────
-
-  async function beforeRequestHandler(messages, type) {
-    if (!State.enabled) return messages;
-
-    var cleanMessages = [];
-    for (var i = 0; i < messages.length; i++) {
-      var msg = messages[i];
-      if (typeof msg.content === 'string' && msg.content.indexOf('*-*-') !== -1) {
-        cleanMessages.push(Object.assign({}, msg, {
-          content: msg.content.replace(MARKER_REGEX, '')
-        }));
-      } else {
-        cleanMessages.push(msg);
-      }
-    }
-    return cleanMessages;
-  }
-
   // ───── FAB: manual re-summarize ─────
 
   async function onFabClick() {
@@ -427,8 +396,7 @@
       if (targetIdx < 0) return;
 
       var msg = chat.message[targetIdx];
-      var original = extractOriginal(msg.data);
-      var textToSummarize = original || stripMarkers(msg.data);
+      var textToSummarize = (msg.data || '').replace(MARKER_REGEX, '').trim();
       if (!textToSummarize) return;
 
       console.log('[RPA Summarizer] FAB: re-summarizing message ' + (targetIdx + 1) + ' (' + textToSummarize.length + ' chars)');
@@ -1376,7 +1344,6 @@
     await loadSettings();
 
     await risuai.addRisuReplacer('afterRequest', afterRequestHandler);
-    await risuai.addRisuReplacer('beforeRequest', beforeRequestHandler);
 
     await risuai.registerButton({
       name: 'RPA Summarizer',
